@@ -1,0 +1,40 @@
+name: Notify Feishu on PR merged to dev
+
+on:
+  pull_request:
+    types: [closed]   # 只在 PR 被关闭时触发（包括合并）
+    branches:
+      - dev           # 仅目标分支是 dev 的 PR 才会触发
+
+jobs:
+  notify:
+    if: github.event.pull_request.merged == true   # 只处理「已合并」的情况
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send notification to Feishu
+        env:
+          PR_INFO_FEISHU_WEBHOOK: ${{ secrets.PR_INFO_FEISHU_WEBHOOK }}
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          PR_URL="${{ github.event.pull_request.html_url }}"
+          PR_MERGED_BY="${{ github.event.pull_request.merged_by.login }}"
+          PR_HEAD="${{ github.event.pull_request.head.ref }}"
+          PR_BASE="${{ github.event.pull_request.base.ref }}"
+          PR_BODY="${{ github.event.pull_request.body }}"
+          
+          payload=$(cat <<EOF
+          {
+            "msg_type": "text",
+            "content": {
+              "text": "[dev 分支] PR 合并\n标题: ${PR_TITLE}\n编号: #${PR_NUMBER}\n合并人: ${PR_MERGED_BY}\n${PR_HEAD} -> ${PR_BASE}\n链接: ${PR_URL}\n内容: ${PR_BODY}"
+            }
+          }
+          EOF
+          )
+
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d "$payload" \
+            "$PR_INFO_FEISHU_WEBHOOK"
