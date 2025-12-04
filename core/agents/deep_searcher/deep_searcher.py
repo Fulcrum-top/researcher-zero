@@ -102,7 +102,7 @@ async def deep_searcher_think(state: DeepSearcherState, config: RunnableConfig) 
         goto="deep_searcher_act",
         update={
             "searcher_messages": [response],
-            "search_turns": state.get("search_turns", 0) + 1
+            "think_turns": state.get("think_turns", 0) + 1
         }
     )
 
@@ -110,7 +110,6 @@ async def deep_searcher_think(state: DeepSearcherState, config: RunnableConfig) 
 async def deep_searcher_act(state: DeepSearcherState, config: RunnableConfig) -> Command[Literal["deep_searcher_think", "summarize"]]:
     configurable = DeepSearcherConfig.from_runnable_config(config)
 
-    search_turns = state.get("search_turns", 0)
     searcher_messages = state.get("searcher_messages", [])
     if not searcher_messages:
         logger.warning("No searcher messages found; skipping to summarize.")
@@ -118,7 +117,6 @@ async def deep_searcher_act(state: DeepSearcherState, config: RunnableConfig) ->
 
     most_recent_message = searcher_messages[-1]
 
-    exceeded_allowed_search_turns = search_turns >= configurable.max_search_turns
     no_tool_calls = not most_recent_message.tool_calls
     
     search_complete_tool_call = any(
@@ -126,7 +124,7 @@ async def deep_searcher_act(state: DeepSearcherState, config: RunnableConfig) ->
         for tool_call in most_recent_message.tool_calls
     )
 
-    if exceeded_allowed_search_turns or no_tool_calls or search_complete_tool_call:
+    if no_tool_calls or search_complete_tool_call:
         return Command(
             goto="summarize"
         )
@@ -147,7 +145,7 @@ async def deep_searcher_act(state: DeepSearcherState, config: RunnableConfig) ->
 
     for tool_call in conduct_search_calls:
         queries = tool_call.get("args", {}).get("queries", []) or []
-        unique_queries = [q for q in queries if q not in existing_queries]
+        unique_queries = [q for q in queries if q not in existing_queries][:3]
         existing_queries.update(unique_queries)
 
         if not unique_queries:
@@ -164,11 +162,12 @@ async def deep_searcher_act(state: DeepSearcherState, config: RunnableConfig) ->
         for query, query_results in zip(unique_queries, tavily_response):
             query_result_items = query_results.get("results", [])
             for item in query_result_items:
+                content = item.get("raw_content", "") or item.get("content", "")
                 aggregated_results.append(
                     SearchResult(
                         url=item.get("url", ""),
-                        title=item.get("title", "") or query,
-                        content=item.get("content") or item.get("raw_content", "")
+                        title=item.get("title", ""),
+                        content=content[:4000]
                     )
                 )
             new_queries.append(query)
@@ -186,8 +185,14 @@ async def deep_searcher_act(state: DeepSearcherState, config: RunnableConfig) ->
     updated_results = state.get("search_results", []) + aggregated_results
     updated_queries = state.get("search_queries", []) + new_queries
 
+    next_node = "deep_searcher_think"
+    think_turns = state.get("think_turns", 0)
+    exceeded_allowed_think_turns = think_turns >= configurable.max_think_turns
+    if exceeded_allowed_think_turns:
+        next_node = "summarize"
+    
     return Command(
-        goto="deep_searcher_think",
+        goto=next_node,
         update={
             "search_results": updated_results,
             "search_queries": updated_queries,
@@ -196,12 +201,13 @@ async def deep_searcher_act(state: DeepSearcherState, config: RunnableConfig) ->
     )
 
 
-async def summarize(state: DeepSearcherState, config: RunnableConfig) -> Command[Literal[END]]:
+async def summarize(state: DeepSearcherState, config: RunnableConfig) -> Command[Literal["__end__"]]:
     configurable = DeepSearcherConfig.from_runnable_config(config)
+    logger.info(f"Summarizing...")
     summarization_model_config = {
         "model": configurable.summarization_model,
         "model_provider": "openai",
-        "max_tokens": 10000,
+        "max_tokens": 500,
         "temperature": 0.0,
         "timeout": 180
     }
@@ -216,6 +222,7 @@ async def summarize(state: DeepSearcherState, config: RunnableConfig) -> Command
     )
     messages = [SystemMessage(content=get_system_prompt()), HumanMessage(content=summarization_prompt)]
     response = await summarization_model.ainvoke(messages)
+    logger.info("Summarization complete.")
     return Command(
         goto=END,
         update={"search_report": response}
@@ -229,10 +236,7 @@ deep_searcher_graph.add_node("deep_searcher_act", deep_searcher_act)
 deep_searcher_graph.add_node("summarize", summarize)
 
 deep_searcher_graph.add_edge(START, "generate_checklist")
-deep_searcher_graph.add_edge("generate_checklist", "deep_searcher_think")
-deep_searcher_graph.add_edge("deep_searcher_think", "deep_searcher_act")
-deep_searcher_graph.add_edge("deep_searcher_act", "summarize")
-deep_searcher_graph.add_edge("summarize", END)
+
 
 deep_searcher_graph = deep_searcher_graph.compile()
 
@@ -243,7 +247,7 @@ async def main():
         messages=[HumanMessage(content=sample_task)],
         info_task=sample_task,
         checklist=None,
-        search_turns=0,
+        think_turns=0,
         search_queries=[],
         search_results=[],
         search_report=None,

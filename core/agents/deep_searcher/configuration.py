@@ -10,8 +10,8 @@ class DeepSearcherConfig(BaseModel):
         default=True,
         description="Whether to add a generated checklist to guide the search"
     )
-    max_search_turns: int = Field(
-        default=3,
+    max_think_turns: int = Field(
+        default=1,
         description="The maximum number of search turns to perform"
     )
     max_search_results: int = Field(

@@ -45,7 +45,7 @@ class DeepSearcherState(MessagesState):
     info_task: str
     checklist: Optional[Checklist] = None
 
-    search_turns: int = Field(default=0)
+    think_turns: int = Field(default=0)
     search_queries: List[str] = Field(default_factory=list)
     search_results: List[SearchResult] = Field(default_factory=list)
     search_report: Optional[DeepSearcherOutput] = None
