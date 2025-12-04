@@ -24,15 +24,9 @@ jobs:
           PR_BASE="${{ github.event.pull_request.base.ref }}"
           PR_BODY="${{ github.event.pull_request.body }}"
           
-          payload=$(cat <<EOF
-          {
-            "msg_type": "text",
-            "content": {
-              "text": "[dev 分支] PR 合并\n标题: ${PR_TITLE}\n编号: #${PR_NUMBER}\n合并人: ${PR_MERGED_BY}\n${PR_HEAD} -> ${PR_BASE}\n链接: ${PR_URL}\n内容: ${PR_BODY}"
-            }
-          }
-          EOF
-          )
+          text="[dev 分支] PR 合并\n标题: ${PR_TITLE}\n编号: #${PR_NUMBER}\n合并人: ${PR_MERGED_BY}\n${PR_HEAD} -> ${PR_BASE}\n链接: ${PR_URL}\n内容: ${PR_BODY}"
+          payload=$(jq -n --arg text "$text" \
+            '{msg_type:"text", content:{text:$text}}')
 
           curl -X POST \
             -H "Content-Type: application/json" \
