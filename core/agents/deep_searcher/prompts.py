@@ -1,3 +1,6 @@
+from typing import List
+
+
 def get_system_prompt() -> str:
     return """You are a helpful deep searcher.
 """
@@ -58,3 +61,97 @@ Step 3: Turn dimensions into checklist items
 
     return f"Given query: {normalized_query}\n\n{instruction}"
 
+
+def get_deep_searcher_think_prompt(info_task: str, checklist: str, history_queries: List[str], history_search_results: str) -> str:
+    checklist_guide_prompt = ""
+    if checklist:
+        checklist_guide_prompt = f"""<Checklist Guide>
+Use the checklist as a coverage map. Identify uncovered or shallow items. Decide to:
+1) Continue to conduct searches for the uncovered or shallow items with the ConductSearch tool.
+2) Complete if all checklist dimensions are sufficiently addressed.
+</Checklist Guide>
+
+**Checklist**
+{checklist}
+"""
+    history_queries_prompt = ""
+    if history_queries:
+        history_queries_prompt = f"""<History Queries>
+You have already conducted multiple searches with the following queries:
+{history_queries}
+</History Queries>
+"""
+
+    return f"""<Task>
+Your job is to use tools to gather information about a information seeking task. You can use any of the tools provided to you to find resources that can help answer the question. You can call these tools in series or in parallel.
+</Task>
+
+{checklist_guide_prompt}
+
+{history_queries_prompt}
+
+<History Search Results>
+{history_search_results}
+</History Search Results>
+
+<Information Seeking Task>
+{info_task}
+</Information Seeking Task>
+
+<Instructions>
+Think like a human researcher with limited time. Follow these steps:
+1. **Read the task carefully** - What specific information does the task need?
+2. **Generate diverse queries** - Each query must explore a DIFFERENT aspect, angle, or dimension:
+   - For simple factual questions (e.g., "What is X?"): Use ONE comprehensive query, avoid repeating the same question in different words
+   - For complex topics: Each query should target a different subdomain, perspective, or analytical layer
+   - GOOD examples for "How do birds navigate?":
+     * "bird navigation mechanisms magnetoreception"
+     * "bird migration patterns routes"
+     * "avian celestial navigation cues"
+   - BAD examples (too similar, avoid these):
+     * "capital of France"
+     * "what is the capital city of France"
+     * "France capital city name"
+3. **Max queries per turn** - Generate at most 3 queries per search turn to maintain focus and efficiency.
+4. **No duplicate searches** - Do not repeat any query that has been used before, and avoid queries that ask essentially the same question with different wording.
+5. **After each search, pause and assess** - Do I have enough to answer? What's still missing?
+6. **Execute narrower searches as you gather information** - Fill in the gaps with targeted queries
+7. **Stop when you can answer confidently** - Don't keep searching for perfection
+</Instructions>
+"""
+
+
+def get_summarization_prompt(info_task: str, checklist: str, history_search_results: str) -> str:
+    checklist_prompt = ""
+    if checklist:
+        checklist_prompt = f"""<Checklist>
+The checklist is a guide for the summary. It is used to ensure that all relevant information is gathered.
+{checklist}
+</Checklist>
+"""
+    return f"""<Task>
+Your job is to summarize the web search results gathered about the information seeking task.
+</Task>
+
+<Search Results>
+{history_search_results}
+</Search Results>
+
+<Information Seeking Task>
+{info_task}
+</Information Seeking Task>
+
+{checklist_prompt}
+
+<Instructions>
+1. **Information Extraction:**
+   - Carefully review all the search results from multiple searches
+   - Identify and extract factual information that is relevant to the information seeking task
+   - Focus on information that directly addresses the task
+
+2. **Content Organization:**
+   - Organize the extracted information in a logical and coherent manner
+   - Prioritize the most relevant and important information
+   - Ensure that the summary is comprehensive and covers all the information that is relevant to the task
+</Instructions>
+"""

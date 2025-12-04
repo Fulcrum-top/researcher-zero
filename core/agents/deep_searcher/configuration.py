@@ -23,7 +23,7 @@ class DeepSearcherConfig(BaseModel):
         default="kimi",
         description="The model to use for generating the checklist"
     )
-    conduct_search_model: str = Field(
+    deep_searcher_think_model: str = Field(
         default="kimi",
         description="The model to use for generating the search queries"
     )
