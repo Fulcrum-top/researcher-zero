@@ -24,13 +24,16 @@ jobs:
           PR_BASE="${{ github.event.pull_request.base.ref }}"
           PR_BODY="${{ github.event.pull_request.body }}"
           
-          text="[dev 分支] PR 合并
+          text=$(cat <<EOF
+[dev 分支] PR 合并
 标题: ${PR_TITLE}
 编号: #${PR_NUMBER}
 合并人: ${PR_MERGED_BY}
 ${PR_HEAD} -> ${PR_BASE}
 链接: ${PR_URL}
-内容: ${PR_BODY}"
+内容: ${PR_BODY}
+EOF
+)
 
           payload=$(jq -n --arg text "$text" \
             '{msg_type:"text", content:{text:$text}}')
