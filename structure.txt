@@ -1,0 +1,25 @@
+Fulcrum_ai/
+├── logs/
+│   └── debug.log
+├── src/
+│   ├── configs/
+│   │   └── models.yaml
+│   ├── logger/
+│   │   ├── __init__.py
+│   │   └── logger.py
+│   ├── gateways/
+│   │   ├── __init__.py
+│   │   └── llm_gateway.py
+│   ├── tools/
+│   │   ├── __init__.py
+│   │   └── config_loader.py
+│   └── agents/
+│       └── __init__.py
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py
+│   ├── test_llm_gateway.py
+│   └── test_gateway_validation.py
+├── .env                     # 环境变量文件（与src同级）
+├── requirements.txt
+└── structure.txt

@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 logs/
 my_run.sh
+data/
+docs/
 
 # C extensions
 *.so

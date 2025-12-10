@@ -3,6 +3,7 @@ import inspect
 import os
 from pathlib import Path
 from datetime import datetime
+import colorlog
 
 
 class ModuleAwareLogger(logging.Logger):
@@ -39,6 +40,19 @@ class ModuleAwareLogger(logging.Logger):
 
         super()._log(level, msg, args, exc_info, extra, stack_info, stacklevel)
 
+def setup_third_party_loggers():
+    """设置第三方库的日志级别，避免冗余输出"""
+    third_party_loggers = [
+        "selenium.webdriver.remote.remote_connection",
+        "urllib3",
+        "selenium.webdriver.common.selenium_manager",
+        "httpx",
+        "httpcore",
+        "openai",
+        "litellm"
+    ]
+    for logger_name in third_party_loggers:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
 
 def _create_logger() -> logging.Logger:
     """创建并配置全局 logger"""
@@ -70,8 +84,27 @@ def _create_logger() -> logging.Logger:
     # 检查文件是否已存在（用于决定是否需要添加分割线）
     file_exists = log_file.exists()
 
-    # 日志格式（使用 module_name 而不是 name）
-    formatter = logging.Formatter(
+    # # 日志格式（使用 module_name 而不是 name）
+    # formatter = logging.Formatter(
+    #     "%(asctime)s | %(levelname)s | %(module_name)s | %(message)s",
+    #     datefmt="%Y-%m-%d %H:%M:%S",
+    # )
+
+    # 彩色控制台格式
+    formatter = colorlog.ColoredFormatter(
+        '%(log_color)s%(asctime)s | %(levelname)s | %(module_name)s | %(message)s',
+        log_colors={
+            'DEBUG': 'blue',
+            'INFO': 'white',
+            'WARNING': 'yellow',
+            'ERROR': 'red',
+            'CRITICAL': 'bold_red',
+        },
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    # 文件日志格式
+    file_formatter = logging.Formatter(
         "%(asctime)s | %(levelname)s | %(module_name)s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
@@ -103,6 +136,9 @@ def _create_logger() -> logging.Logger:
         f.write(f"{separator}\n")
         f.write(f"[{now}] New Session Started\n")
         f.write(f"{separator}\n")
+
+    # 设置第三方库日志级别
+    setup_third_party_loggers()
 
     return logger
 

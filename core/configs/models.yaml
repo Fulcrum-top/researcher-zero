@@ -1,0 +1,30 @@
+models:
+  kimi-latest:
+    provider: openai
+    model_name: kimi-latest
+    api_key: ${KIMI_API_KEY}
+    base_url: https://api.moonshot.cn/v1
+    timeout: 60
+    max_retries: 3
+  deepseek-chat:
+    provider: openai
+    model_name: deepseek-chat
+    api_key: ${DEEPSEEK_API_KEY}
+    base_url: https://api.deepseek.com/v1
+    timeout: 30
+  qwen-turbo:
+    provider: openai
+    model_name: qwen-turbo
+    api_key: ${QWEN_API_KEY}
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    timeout: 30
+  qwen-vl:
+    provider: openai
+    model_name: qwen-vl
+    api_key: ${QWEN_API_KEY}
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    timeout: 60
+defaults:
+  timeout: 30
+  max_retries: 3
+  retry_interval: 1
